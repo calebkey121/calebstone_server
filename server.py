@@ -1,8 +1,8 @@
 from flask import Flask, jsonify, request
 from flask_cors import CORS
-from game_engine.GameManager import GameManager
-from game_engine.Controller import Controller
-from game_engine.Decklists import create_deck, DeckType
+from game_engine.game import GameManager
+from game_engine.controllers import Controller, RandomController
+from game_engine.cards import create_deck, DeckType
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
@@ -22,7 +22,7 @@ class WebController(Controller):
 
 # Initialize controllers
 player1_controller = WebController()
-player2_controller = WebController()
+player2_controller = RandomController()
 
 def init_game():
     global game_manager
