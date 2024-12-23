@@ -17,6 +17,11 @@ def get_game_state(session_id):
     state = game_controller.get_game_state(session_id)
     return jsonify(state)
 
+@game_routes.route('/game_state', methods=['GET'])
+def get_all_game_states():
+    session_ids = list(game_controller.games.keys())
+    return jsonify(session_ids)
+
 @game_routes.route('/action/<session_id>', methods=['POST'])
 def handle_action(session_id):
     action = request.json
