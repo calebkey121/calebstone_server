@@ -1,27 +1,37 @@
 # server/app/controllers/game_controller.py
 from game_engine.game import GameManager
-from game_engine.controllers import Controller, WebController
 from game_engine.cards import create_deck, DeckType
+from threading import Thread
 
 class GameController:
     def __init__(self):
         self.games = {}  # Store multiple games by session_id
     
     def create_game(self, session_id):
-        player1_controller = WebController()
-        player2_controller = WebController()
+        """Start a new game in a separate thread."""
+        game_thread = Thread(target=self.run_game, args=(session_id,))
+        game_thread.daemon = True  # Ensures the thread exits when the main program exits
+        game_thread.start()
+        return {'session_id': session_id}
+    
+    def run_game(self, session_id):
+        """Function to run the game loop for a session."""
+        game = GameManager()
         
-        game = GameManager(player1_controller=player1_controller, player2_controller=player2_controller)
-        
+        # Store the game in the dictionary
         self.games[session_id] = {
             'manager': game,
             'controllers': {
-                'player1': player1_controller,
-                'player2': player2_controller
+                'player1': game.player1_controller.type,
+                'player2': game.player2_controller.type
             }
         }
         
-        return {'session_id': session_id}
+        # Start the game loop
+        game.run_game()  # This will keep running until the game ends
+        
+        # Clean up after the game is over
+        del self.games[session_id]
     
     def get_game_state(self, session_id):
         if session_id not in self.games:
@@ -35,18 +45,16 @@ class GameController:
             return {'error': 'Game not found'}
             
         game = self.games[session_id]
-        current_player = 'player1' if game['manager'].game_state.is_player1_turn() else 'player2'
-        controller = game['controllers'][current_player]
+        # uncomment
+        # current_player = 'player1' if game['manager'].game_state.is_player1_turn() else 'player2'
+        # controller = game['controllers'][current_player]
+        controller = game['manager'].player1_controller # change from hardcoding
         
         # Set the action in the controller
         controller.set_action(action)
         
-        # Process the turn
-        is_turn_complete = game['manager'].process_turn()
-        
         return {
             'status': 'success',
-            'is_turn_complete': is_turn_complete,
             'game_state': self._serialize_game_state(game['manager'].game_state)
         }
     

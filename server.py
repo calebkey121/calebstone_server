@@ -10,25 +10,9 @@ CORS(app)  # Enable CORS for all routes
 # Store game state globally (for simplicity - in production you'd want proper session handling)
 game_manager = None
 
-class WebController(Controller):
-    def __init__(self):
-        self.pending_action = None
-    
-    def get_action(self, game_state):
-        return self.pending_action
-    
-    def set_action(self, action):
-        self.pending_action = action
-
-# Initialize controllers
-player1_controller = WebController()
-player2_controller = RandomController()
-
 def init_game():
     global game_manager
     game_manager = GameManager()
-    game_manager.player1_controller = player1_controller
-    game_manager.player2_controller = player2_controller
 
 def serialize_character(char):
     return {
