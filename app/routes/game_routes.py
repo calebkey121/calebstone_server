@@ -6,6 +6,10 @@ import uuid
 game_routes = Blueprint('game', __name__)
 game_controller = GameController()
 
+@game_routes.route('/health', methods=['GET'])
+def health_check():
+    return jsonify({"status": "healthy"}), 200
+
 @game_routes.route('/new_game', methods=['POST'])
 def new_game():
     session_id = str(uuid.uuid4())
