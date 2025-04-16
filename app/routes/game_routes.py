@@ -12,8 +12,13 @@ def health_check():
 
 @game_routes.route('/new_game', methods=['POST'])
 def new_game():
+    data = request.get_json() or {}
+    # extract with defaults
+    p1_type = data.get('player1_controller', 'random')
+    p2_type = data.get('player2_controller', 'random')
+
     session_id = str(uuid.uuid4())
-    result = game_controller.create_game(session_id)
+    result = game_controller.create_game(session_id, p1_type, p2_type)
     return jsonify(result)
 
 @game_routes.route('/game_state/<session_id>', methods=['GET'])

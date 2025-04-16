@@ -7,16 +7,16 @@ class GameController:
     def __init__(self):
         self.games = {}  # Store multiple games by session_id
     
-    def create_game(self, session_id):
+    def create_game(self, session_id, p1_type="random", p2_type="random"):
         """Start a new game in a separate thread."""
-        game_thread = Thread(target=self.run_game, args=(session_id,))
+        game_thread = Thread(target=self.run_game, args=(session_id, p1_type, p2_type))
         game_thread.daemon = True  # Ensures the thread exits when the main program exits
         game_thread.start()
         return {'session_id': session_id}
     
-    def run_game(self, session_id):
+    def run_game(self, session_id, p1_type, p2_type):
         """Function to run the game loop for a session."""
-        game = GameManager()
+        game = GameManager(player1_controller_type=p1_type, player2_controller_type=p2_type)
         
         # Store the game in the dictionary
         self.games[session_id] = {
