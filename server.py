@@ -58,10 +58,10 @@ def handle_action():
     action = request.json
     
     # Set the action for the current player's controller
-    if game_manager.game_state.is_player1_turn():
-        player1_controller.set_action(action)
+    if game_manager.game_state.is_p1_turn():
+        game_manager.p1_controller.set_action(action)
     else:
-        player2_controller.set_action(action)
+        game_manager.p2_controller.set_action(action)
     
     # Process one step of the game
     game_manager.process_turn()

@@ -46,7 +46,7 @@ class GameController:
             
         game = self.games[session_id]
         # uncomment
-        # current_player = 'player1' if game['manager'].game_state.is_player1_turn() else 'player2'
+        # current_player = 'player1' if game['manager'].game_state.is_p1_turn() else 'player2'
         # controller = game['controllers'][current_player]
         controller = game['manager'].player1_controller # change from hardcoding
         
