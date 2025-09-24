@@ -48,7 +48,7 @@ def get_game_state():
     game_state = game_manager.game_state
     return jsonify({
         'current_player': serialize_player(game_state.current_player),
-        'opponent_player': serialize_player(game_state.opponent_player),
+        'opposing_player': serialize_player(game_state.opposing_player),
         'current_round': game_state.current_round,
         'is_game_over': game_manager.is_game_over()
     })

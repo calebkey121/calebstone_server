@@ -1,6 +1,6 @@
 # server/app/controllers/game_controller.py
 from calebstone_engine.game import GameManager
-from calebstone_engine.cards import create_deck, DeckType
+#from calebstone_engine.cards import create_deck, DeckType
 from threading import Thread
 
 class GameController:
@@ -62,7 +62,7 @@ class GameController:
         # Convert your game state to JSON-serializable format
         return {
             'current_player': self._serialize_player(game_state.current_player),
-            'opponent_player': self._serialize_player(game_state.opponent_player),
+            'opposing_player': self._serialize_player(game_state.opposing_player),
             'current_round': game_state.current_round,
             'is_game_over': game_state.get_result() != 'IN_PROGRESS'
         }
