@@ -1,5 +1,6 @@
 # server/app/controllers/game_controller.py
 from calebstone_engine.game.game_manager import GameManager
+from calebstone_engine.config import PlayerConfig
 #from calebstone_engine.cards import create_deck, DeckType
 from threading import Thread
 
@@ -16,7 +17,17 @@ class GameController:
     
     def run_game(self, session_id, p1_type, p2_type):
         """Function to run the game loop for a session."""
-        game = GameManager(player1_controller_type=p1_type, player2_controller_type=p2_type)
+        p1_cfg = PlayerConfig(
+            player_id="p1",
+            controller=p1_type,
+            hero="Caleb",
+        )
+        p2_cfg = PlayerConfig(
+            player_id="p2",
+            controller=p2_type,
+            hero="Dio",
+        )
+        game = GameManager(p1_config=p1_cfg, p2_config=p2_cfg)
         
         # Store the game in the dictionary
         self.games[session_id] = {
