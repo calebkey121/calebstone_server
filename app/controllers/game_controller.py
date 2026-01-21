@@ -1,5 +1,5 @@
 # server/app/controllers/game_controller.py
-from calebstone_engine.game import GameManager
+from calebstone_engine.game.game_manager import GameManager
 #from calebstone_engine.cards import create_deck, DeckType
 from threading import Thread
 

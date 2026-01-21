@@ -1,5 +1,5 @@
 from flask import Blueprint, jsonify
-from calebstone_engine.cards import CARD_CATALOG
+from calebstone_engine.cards.cards import CARD_CATALOG
 
 card_routes = Blueprint('cards', __name__)
 
