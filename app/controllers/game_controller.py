@@ -1,8 +1,11 @@
 # server/app/controllers/game_controller.py
 from calebstone_engine.game.game_manager import GameManager
+from calebstone_engine.game.game_state import GameResult
 from calebstone_engine.config import PlayerConfig
 #from calebstone_engine.cards import create_deck, DeckType
 from threading import Thread
+
+import time
 
 class GameController:
     def __init__(self):
@@ -33,33 +36,53 @@ class GameController:
         self.games[session_id] = {
             'manager': game,
             'controllers': {
-                'player1': game.player1_controller.type,
-                'player2': game.player2_controller.type
+                'player1': game.p1_controller.type,
+                'player2': game.p2_controller.type
             }
         }
         
         # Start the game loop
         game.run_game()  # This will keep running until the game ends
         
-        # Clean up after the game is over
-        del self.games[session_id]
+        # At end of game, update the game status and result
+        result = game.game_state.get_result()
+        entry = self.games.get(session_id)
+        if entry is not None:
+            entry["status"] = "finished"
+            entry["finished_at"] = time.time()
+            entry["result"] = result.name.lower()  # "in_progress" / "tie" / "p1_win" / "p2_win"
     
     def get_game_state(self, session_id):
         if session_id not in self.games:
             return {'error': 'Game not found'}
-            
-        game = self.games[session_id]['manager']
-        return self._serialize_game_state(game.game_state)
+
+        entry = self.games[session_id]
+        game = entry['manager']
+        state = self._serialize_game_state(game.game_state)
+        state["status"] = entry.get("status", "running")
+        state["result"] = entry.get("result", "in_progress")
+        state["finished_at"] = entry.get("finished_at")
+        return state
     
     def process_action(self, session_id, action):
         if session_id not in self.games:
             return {'error': 'Game not found'}
+        
+        game = self.games[session_id]
+        if game.get("status") == "finished":
+            return {
+                "error": "Game is finished",
+                "status": "finished",
+                "result": game.get("result"),
+                "game_state": self._serialize_game_state(game["manager"].game_state),
+            }
             
         game = self.games[session_id]
         # uncomment
         # current_player = 'player1' if game['manager'].game_state.is_p1_turn() else 'player2'
         # controller = game['controllers'][current_player]
-        controller = game['manager'].player1_controller # change from hardcoding
+        p1_turn = game['manager'].game_state.current_player == game['manager'].game_state.p1
+        controller = game['manager'].p1_controller if p1_turn else game['manager'].p2_controller
         
         # Set the action in the controller
         controller.set_action(action)
@@ -75,7 +98,7 @@ class GameController:
             'current_player': self._serialize_player(game_state.current_player),
             'opposing_player': self._serialize_player(game_state.opposing_player),
             'current_round': game_state.current_round,
-            'is_game_over': game_state.get_result() != 'IN_PROGRESS'
+            'is_game_over': game_state.get_result() != GameResult.IN_PROGRESS
         }
     
     def _serialize_player(self, player):
