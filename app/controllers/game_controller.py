@@ -107,7 +107,7 @@ class GameController:
         payload["status"] = entry.get("status", "running")
         payload["result"] = entry.get("result", "in_progress")
         payload["finished_at"] = entry.get("finished_at")
-        payload["legal_actions"] = [{"type": "end_turn"}]
+        payload["legal_actions"] = [] if payload["status"] == "finished" else self._build_legal_actions(entry)
         return self._wrap_response(session_id, payload)
 
     def process_action(self, session_id, action):
@@ -165,7 +165,7 @@ class GameController:
         return self._wrap_response(session_id, {
             'status': 'success',
             'game_state': self._serialize_game_state(manager.game_state, entry),
-            'legal_actions': [{"type": "end_turn"}],
+            'legal_actions': self._build_legal_actions(entry),
         })
 
     def _translate_action(self, entry, action):
@@ -203,6 +203,68 @@ class GameController:
 
         # Unknown action type — pass through as-is (engine will reject it).
         return action
+
+    def _build_legal_actions(self, entry):
+        """Translate engine legal actions (index-based) to API legal actions (instance_id-based)."""
+        manager = entry["manager"]
+        if hasattr(manager, "get_legal_actions"):
+            actions = manager.get_legal_actions()
+        else:
+            actions = manager.game_state.possible_actions()
+
+        if not isinstance(actions, list):
+            return []
+
+        legal_actions = []
+        for action in actions:
+            wire_action = self._engine_action_to_wire_action(entry, action)
+            if wire_action is not None:
+                legal_actions.append(wire_action)
+        return legal_actions
+
+    def _engine_action_to_wire_action(self, entry, action):
+        if not isinstance(action, dict):
+            return None
+
+        action_type = action.get("type")
+        gs = entry["manager"].game_state
+
+        if action_type == "end_turn":
+            return {"type": "end_turn"}
+
+        if action_type == "play_card":
+            card_index = action.get("card_index")
+            if not isinstance(card_index, int):
+                return None
+            hand = gs.current_player._hand
+            if card_index < 0 or card_index >= len(hand):
+                return None
+            card = hand[card_index]
+            return {
+                "type": "play_card",
+                "card_instance_id": self._get_or_assign_iid(entry, card),
+            }
+
+        if action_type == "attack":
+            attacker_index = action.get("attacker_index")
+            target_index = action.get("target_index")
+            if not isinstance(attacker_index, int) or not isinstance(target_index, int):
+                return None
+            attackers = gs.current_player.all_characters()
+            targets = gs.opposing_player.all_characters()
+            if attacker_index < 0 or attacker_index >= len(attackers):
+                return None
+            if target_index < 0 or target_index >= len(targets):
+                return None
+            attacker = attackers[attacker_index]
+            target = targets[target_index]
+            return {
+                "type": "attack",
+                "attacker_id": self._get_or_assign_iid(entry, attacker),
+                "target_id": self._get_or_assign_iid(entry, target),
+            }
+
+        return None
 
     def _iid_to_hand_index(self, entry, iid):
         gs = entry['manager'].game_state
