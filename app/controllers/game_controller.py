@@ -297,12 +297,40 @@ class GameController:
         return None
 
     def _serialize_game_state(self, game_state, entry):
+        game_result = game_state.get_result()
+        winner_player_id = None
+        if game_result == GameResult.P1_WIN:
+            winner_player_id = game_state.p1._config.player_id
+        elif game_result == GameResult.P2_WIN:
+            winner_player_id = game_state.p2._config.player_id
+
+        active_player_id = None
+        if game_state.current_player is not None:
+            active_player_id = game_state.current_player._config.player_id
+
+        # Seat-stable snapshots (recommended for clients): never flip with turn.
+        p1_state = self._serialize_player(game_state.p1, entry)
+        p2_state = self._serialize_player(game_state.p2, entry)
+
+        # Turn-relative views (legacy compatibility with current clients).
+        current_player_state = p1_state
+        opposing_player_state = p2_state
+        if active_player_id == game_state.p2._config.player_id:
+            current_player_state = p2_state
+            opposing_player_state = p1_state
+
         # Convert your game state to JSON-serializable format
         return {
-            'current_player': self._serialize_player(game_state.current_player, entry),
-            'opposing_player': self._serialize_player(game_state.opposing_player, entry),
+            'players': {
+                'p1': p1_state,
+                'p2': p2_state,
+            },
+            'current_player': current_player_state,
+            'opposing_player': opposing_player_state,
             'round': game_state.current_round,
-            'is_game_over': game_state.get_result() != GameResult.IN_PROGRESS
+            'is_game_over': game_result != GameResult.IN_PROGRESS,
+            'active_player_id': active_player_id,
+            'winner_player_id': winner_player_id,
         }
 
     def _serialize_player(self, player, entry):
