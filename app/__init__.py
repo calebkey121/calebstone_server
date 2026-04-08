@@ -12,5 +12,5 @@ def create_app():
     CORS(app)  # Enable CORS for development
     
     # Register blueprints
-    app.register_blueprint(game_routes, url_prefix='/api')
+    app.register_blueprint(game_routes)
     return app
