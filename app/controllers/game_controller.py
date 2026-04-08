@@ -7,6 +7,7 @@ from threading import Thread
 
 import time
 import uuid as _uuid
+import re
 
 SCHEMA_VERSION = 1
 ACTION_WAIT_TIMEOUT_SECONDS = 2.0
@@ -44,12 +45,12 @@ class GameController:
         p1_cfg = PlayerConfig(
             player_id="p1",
             controller=p1_type,
-            hero="Caleb",
+            hero="Necromancer of the Vale",
         )
         p2_cfg = PlayerConfig(
             player_id="p2",
             controller=p2_type,
-            hero="Dio",
+            hero="Auctor Noctis",
         )
         game = GameManager(p1_config=p1_cfg, p2_config=p2_cfg)
 
@@ -89,6 +90,14 @@ class GameController:
         if key not in iids:
             iids[key] = f"iid-{_uuid.uuid4().hex[:12]}"
         return iids[key]
+
+    def _to_snake_id(self, value):
+        """Normalize display text into a stable snake_case identifier."""
+        if value is None:
+            return ""
+        cleaned = re.sub(r"[^a-zA-Z0-9]+", "_", str(value).strip())
+        cleaned = re.sub(r"_+", "_", cleaned).strip("_")
+        return cleaned.lower()
 
     def get_game_state(self, session_id):
         if session_id not in self.games:
@@ -341,6 +350,7 @@ class GameController:
             'deck_count': player.deck_size(),
             'hero': {
                 'instance_id': self._get_or_assign_iid(entry, player.hero),
+                'hero_id': self._to_snake_id(player.hero.name),
                 'name': player.hero.name,
                 'health': player.hero.health,
                 'max_health': player.hero.max_health,
