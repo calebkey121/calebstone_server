@@ -33,6 +33,13 @@ def get_all_game_states():
     session_ids = list(game_controller.games.keys())
     return jsonify(session_ids)
 
+@game_routes.route('/turn_history/<session_id>', methods=['GET'])
+def get_turn_history(session_id):
+    history = game_controller.get_turn_history(session_id)
+    if 'error' in history and history.get('error') == 'Game not found':
+        return jsonify(history), 404
+    return jsonify(history)
+
 @game_routes.route('/action/<session_id>', methods=['POST'])
 def handle_action(session_id):
     action = request.json
@@ -63,4 +70,3 @@ def get_card_library():
         "cardset_version": 1,
         "cards": cards,
     })
-

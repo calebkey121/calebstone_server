@@ -34,7 +34,11 @@ class GameController:
     def create_game(self, session_id, p1_type="random", p2_type="random"):
         """Start a new game in a separate thread."""
         # Seed the session entry so _wrap_response can increment game_state_version from 0.
-        self.games[session_id] = {"game_state_version": 0}
+        self.games[session_id] = {
+            "game_state_version": 0,
+            "instance_ids": {},
+            "turn_history": [],
+        }
         game_thread = Thread(target=self.run_game, args=(session_id, p1_type, p2_type))
         game_thread.daemon = True  # Ensures the thread exits when the main program exits
         game_thread.start()
@@ -42,6 +46,10 @@ class GameController:
     
     def run_game(self, session_id, p1_type, p2_type):
         """Function to run the game loop for a session."""
+        entry = self.games.setdefault(session_id, {})
+        entry.setdefault("instance_ids", {})
+        entry.setdefault("turn_history", [])
+
         p1_cfg = PlayerConfig(
             player_id="p1",
             controller=p1_type,
@@ -52,10 +60,19 @@ class GameController:
             controller=p2_type,
             hero="Auctor Noctis",
         )
-        game = GameManager(p1_config=p1_cfg, p2_config=p2_cfg)
+
+        def record_turn_start(game_state):
+            entry["turn_history"].append(
+                self._serialize_turn_start_snapshot(game_state, entry)
+            )
+
+        game = GameManager(
+            p1_config=p1_cfg,
+            p2_config=p2_cfg,
+            turn_start_callback=record_turn_start,
+        )
 
         # Merge into existing entry to preserve game_state_version counter.
-        entry = self.games.setdefault(session_id, {})
         entry['manager'] = game
         entry['controllers'] = {
             'player1': game.p1_controller.type,
@@ -64,13 +81,13 @@ class GameController:
 
         # Assign stable instance_ids to all cards currently in hand + army.
         # Map: id(python_obj) -> instance_id string. Grows as new objects appear.
-        instance_ids = {}
+        instance_ids = entry['instance_ids']
         for player in (game.game_state.p1, game.game_state.p2):
+            instance_ids.setdefault(id(player.hero), f"iid-{_uuid.uuid4().hex[:12]}")
             for card in player._hand:
-                instance_ids[id(card)] = f"iid-{_uuid.uuid4().hex[:12]}"
+                instance_ids.setdefault(id(card), f"iid-{_uuid.uuid4().hex[:12]}")
             for ally in player.army.allies:
-                instance_ids[id(ally)] = f"iid-{_uuid.uuid4().hex[:12]}"
-        entry['instance_ids'] = instance_ids
+                instance_ids.setdefault(id(ally), f"iid-{_uuid.uuid4().hex[:12]}")
 
         # Start the game loop
         game.run_game()  # This will keep running until the game ends
@@ -99,6 +116,15 @@ class GameController:
         cleaned = re.sub(r"_+", "_", cleaned).strip("_")
         return cleaned.lower()
 
+    def _serialize_turn_start_snapshot(self, game_state, entry):
+        serialized_state = self._serialize_game_state(game_state, entry)
+        return {
+            "turn_index": game_state.total_turns,
+            "round": game_state.current_round,
+            "active_player_id": serialized_state.get("active_player_id"),
+            "game_state": serialized_state,
+        }
+
     def get_game_state(self, session_id):
         if session_id not in self.games:
             return {'error': 'Game not found'}
@@ -118,6 +144,30 @@ class GameController:
         payload["finished_at"] = entry.get("finished_at")
         payload["legal_actions"] = [] if payload["status"] == "finished" else self._build_legal_actions(entry)
         return self._wrap_response(session_id, payload)
+
+    def get_turn_history(self, session_id):
+        if session_id not in self.games:
+            return {'error': 'Game not found'}
+
+        entry = self.games[session_id]
+        if 'manager' not in entry:
+            return self._wrap_response(session_id, {
+                'status': 'starting',
+                'result': 'in_progress',
+                'finished_at': None,
+                'winner_player_id': None,
+                'turn_history': entry.get('turn_history', []),
+            })
+
+        game_state = entry['manager'].game_state
+        serialized_state = self._serialize_game_state(game_state, entry)
+        return self._wrap_response(session_id, {
+            'status': entry.get("status", "running"),
+            'result': entry.get("result", "in_progress"),
+            'finished_at': entry.get("finished_at"),
+            'winner_player_id': serialized_state.get("winner_player_id"),
+            'turn_history': entry.get('turn_history', []),
+        })
 
     def process_action(self, session_id, action):
         if session_id not in self.games:
