@@ -169,6 +169,31 @@ class GameController:
             'turn_history': entry.get('turn_history', []),
         })
 
+    def delete_session(self, session_id):
+        if session_id not in self.games:
+            return {'error': 'Game not found'}, 404
+
+        entry = self.games[session_id]
+        status = entry.get("status", "starting" if 'manager' not in entry else "running")
+        if status != "finished":
+            return {
+                "error": "Game is not finished",
+                "status": 409,
+                "session_status": status,
+            }, 409
+
+        deleted_entry = self.games.pop(session_id)
+        final_gsv = deleted_entry.get("game_state_version", 0) + 1
+        return {
+            "schema_version": SCHEMA_VERSION,
+            "game_state_version": final_gsv,
+            "session_id": session_id,
+            "deleted": True,
+            "result": deleted_entry.get("result", "in_progress"),
+            "finished_at": deleted_entry.get("finished_at"),
+            "turn_snapshot_count": len(deleted_entry.get("turn_history", [])),
+        }
+
     def process_action(self, session_id, action):
         if session_id not in self.games:
             return {'error': 'Game not found'}

@@ -40,6 +40,14 @@ def get_turn_history(session_id):
         return jsonify(history), 404
     return jsonify(history)
 
+@game_routes.route('/session/<session_id>', methods=['DELETE'])
+def delete_session(session_id):
+    result = game_controller.delete_session(session_id)
+    if isinstance(result, tuple):
+        body, status = result
+        return jsonify(body), status
+    return jsonify(result)
+
 @game_routes.route('/action/<session_id>', methods=['POST'])
 def handle_action(session_id):
     action = request.json
