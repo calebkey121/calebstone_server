@@ -175,12 +175,14 @@ class GameController:
 
         entry = self.games[session_id]
         status = entry.get("status", "starting" if 'manager' not in entry else "running")
-        if status != "finished":
-            return {
-                "error": "Game is not finished",
-                "status": 409,
-                "session_status": status,
-            }, 409
+        
+        # return if we want this behavior later
+        # if status != "finished":
+        #     return {
+        #         "error": "Game is not finished",
+        #         "status": 409,
+        #         "session_status": status,
+        #     }, 409
 
         deleted_entry = self.games.pop(session_id)
         final_gsv = deleted_entry.get("game_state_version", 0) + 1
